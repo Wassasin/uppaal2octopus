@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/program_options.hpp>
+#include "parser.hpp"
 
 namespace uppaal2octopus
 {
