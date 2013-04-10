@@ -29,6 +29,17 @@ namespace uppaal2octopus
 	parser::invalid_format::invalid_format(const std::string& arg) : runtime_error(arg)
 	{}
 	
+	bool parser::read(FILE *file, char *str, size_t n) const
+	{
+		do
+		{
+			if(fgets(str, n, file) == NULL)
+				return false;
+		}
+		while(str[0] == '#');
+		return true;
+	}
+	
 	void parser::loadIF(parser::uppaalmodel_t& m, FILE *file) const
 	{
 		char str[255];
@@ -285,5 +296,66 @@ namespace uppaal2octopus
 	parser::Transition::~Transition()
 	{
 		delete[] edges;
+	}
+	
+	void parser::output(const parser::State& s, const parser::callback_t& f) const
+	{
+		//
+	}
+	
+	void parser::loadTrace(const parser::uppaalmodel_t& m, FILE *file, const parser::callback_t& f) const
+	{
+		output(State(m, file), f);
+		for(;;)
+		{
+			int c;
+			
+			// Skip white space.
+			do
+			{
+				c = fgetc(file);
+			}
+			while(isspace(c));
+
+			// A dot terminates the trace.
+			if(c == '.')
+				break;
+
+			// Put the character back into the stream.
+			std::ungetc(c, file);
+
+			// Read a state and a transition.
+			State state(m, file);
+			Transition transition(m, file); //We do nothing with a transition
+			
+			output(state, f);
+		}
+	}
+	
+	void parser::parse(const std::string model, const std::string trace, const parser::callback_t& f) const
+	{
+		FILE *file;
+		uppaalmodel_t m;
+		
+		try
+		{
+			file = fopen(model.c_str(), "r");
+			if(file == NULL)
+				exit(1);
+
+			loadIF(m, file);
+			fclose(file);
+
+			file = fopen(trace.c_str(), "r");
+			if(file == NULL)
+				exit(1);
+
+			loadTrace(m, file, f);
+			fclose(file);
+		}
+		catch(std::exception &e)
+		{
+			std::cerr << "Catched exception: " << e.what() << std::endl;
+		}
 	}
 }

@@ -72,6 +72,8 @@ namespace uppaal2octopus
 			std::cout <<
 				"Model: " << model_file << std::endl <<
 				"Trace: " << trace_file << std::endl;
+			
+			return 1;
 		}
 	};
 }

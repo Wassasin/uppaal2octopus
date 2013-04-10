@@ -33,7 +33,9 @@
 #include <map>
 #include <cstring>
 #include <cstdlib>
+#include <functional>
 
+#include "octopus.hpp"
 
 /* This parser takes an UPPAAL model in the UPPAAL intermediate
  * format and a UPPAAL XTR trace file and returns this as a usable object.
@@ -51,6 +53,9 @@ namespace uppaal2octopus
 	class parser
 	{
 	public:
+		typedef std::function<void(const octopus::event_t&)> callback_t;
+	
+	private:
 		enum type_t { CONST, CLOCK, VAR, META, COST, LOCATION, FIXED };
 		enum flags_t { NONE, COMMITTED, URGENT };
 
@@ -121,7 +126,6 @@ namespace uppaal2octopus
 			int update;
 		};
 
-	private:
 		struct uppaalmodel_t
 		{
 			/* The UPPAAL model in intermediate format.
@@ -143,33 +147,6 @@ namespace uppaal2octopus
 			uppaalmodel_t operator=(uppaalmodel_t&) = delete;
 		};
 		
-		/* Thrown by parser upon parse errors.
-		 */
-		class invalid_format : public std::runtime_error
-		{
-		public:
-			explicit invalid_format(const std::string& arg);
-		};
-
-		/* Reads one line from file. Skips comments.
-		 */
-		bool read(FILE *file, char *str, size_t n) const
-		{
-			do
-			{
-				if(fgets(str, n, file) == NULL)
-				{
-					return false;
-				}
-			}
-			while(str[0] == '#');
-			return true;
-		}
-
-		/* Parser for intermediate format.
-		 */
-		void loadIF(uppaalmodel_t& m, FILE *file) const;
-
 		/* A bound for a clock constraint. A bound consists of a value and a
 		 * bit indicating whether the bound is strict or not.
 		 */
@@ -178,14 +155,14 @@ namespace uppaal2octopus
 			int value   : 31; // The value of the bound
 			bool strict : 1;  // True if the bound is strict
 		};
-
-		/* The bound (infinity, <).
+		
+		/* Thrown by parser upon parse errors.
 		 */
-		static constexpr const bound_t infinity = { INT_MAX >> 1, true };
-
-		/* The bound (0, <=).
-		 */
-		static constexpr const bound_t zero = { 0, false };
+		class invalid_format : public std::runtime_error
+		{
+		public:
+			explicit invalid_format(const std::string& arg);
+		};
 
 		/* A symbolic state. A symbolic state consists of a location vector, a
 		 * variable vector and a zone describing the possible values of the
@@ -210,7 +187,6 @@ namespace uppaal2octopus
 			{
 				return dbm[i * m.clocks.size() + j];
 			}
-
 			int getLocation(int i) const
 			{
 				return locations[i];
@@ -246,78 +222,26 @@ namespace uppaal2octopus
 		private:
 			int *edges;
 		};
+		
+		// The bound (infinity, <).
+		static constexpr const bound_t infinity = { INT_MAX >> 1, true };
 
-		/* Read and print a trace file.
-		 */
-		void loadTrace(const uppaalmodel_t& m, FILE *file) const
-		{
-			/* Read and print trace.
-			 */
-			//std::cout << "State: " << State(file) << std::endl;
-			for(;;)
-			{
-				int c;
-				/* Skip white space.
-				 */
-				do
-				{
-					c = fgetc(file);
-				}
-				while(isspace(c));
+		// The bound (0, <=).
+		static constexpr const bound_t zero = { 0, false };
+		
+		// Reads one line from file. Skips comments.
+		bool read(FILE *file, char *str, size_t n) const;
 
-				/* A dot terminates the trace.
-				 */
-				if(c == '.')
-				{
-					break;
-				}
+		// Parser for intermediate format.
+		void loadIF(uppaalmodel_t& m, FILE *file) const;
 
-				/* Put the character back into the stream.
-				 */
-				std::ungetc(c, file);
+		// Dump a State to Octopus
+		void output(const State& s, const callback_t& f) const;
 
-				/* Read a state and a transition.
-				 */
-				State state(m, file);
-				Transition transition(m, file);
-
-				/* Print transition and state.
-				 */
-				/*std::cout << std::endl << "Transition: " << transition << std::endl
-				     << std::endl << "State: " << state << std::endl;*/
-			}
-		}
+		// Read and output a trace file.
+		void loadTrace(const uppaalmodel_t& m, FILE *file, const callback_t& f) const;
 
 	public:
-		void parse(const std::string model, const std::string trace) const
-		{
-			FILE *file;
-			uppaalmodel_t m;
-			
-			try
-			{
-				file = fopen(model.c_str(), "r");
-
-				if(file == NULL)
-					exit(1);
-
-				loadIF(m, file);
-				fclose(file);
-
-				/* Load trace.
-				 */
-				file = fopen(trace.c_str(), "r");
-
-				if(file == NULL)
-					exit(1);
-
-				loadTrace(m, file);
-				fclose(file);
-			}
-			catch(std::exception &e)
-			{
-				std::cerr << "Catched exception: " << e.what() << std::endl;
-			}
-		}
+		void parse(const std::string model, const std::string trace, const callback_t& f) const;
 	};
 }
