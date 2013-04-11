@@ -173,7 +173,6 @@ namespace uppaal2octopus
 		public:
 			State();
 			State(const uppaalmodel_t& m, FILE *);
-			~State();
 
 			int &getLocation(int i)
 			{
@@ -200,9 +199,9 @@ namespace uppaal2octopus
 				return dbm[i * m.clocks.size() + j];
 			}
 		private:
-			int *locations;
-			int *integers;
-			bound_t *dbm;
+			std::vector<int> locations;
+			std::vector<int> integers;
+			std::vector<bound_t> dbm;
 			void allocate(const uppaalmodel_t& m);
 		};
 
@@ -213,14 +212,13 @@ namespace uppaal2octopus
 		{
 		public:
 			Transition(const uppaalmodel_t& m, FILE *);
-			~Transition();
 
 			int getEdge(int32_t process) const
 			{
 				return edges[process];
 			}
 		private:
-			int *edges;
+			std::vector<int> edges;
 		};
 		
 		// The bound (infinity, <).
@@ -234,10 +232,10 @@ namespace uppaal2octopus
 
 		// Parser for intermediate format.
 		void loadIF(uppaalmodel_t& m, FILE *file) const;
-
-		// Dump a State to Octopus
-		void output(const State& s, const callback_t& f) const;
-
+		
+		size_t findClock(const uppaalmodel_t& m, const std::string str) const;
+		int getClock(const uppaalmodel_t& m, const State& s) const;
+		
 		// Read and output a trace file.
 		void loadTrace(const uppaalmodel_t& m, FILE *file, const callback_t& f) const;
 

@@ -69,9 +69,14 @@ namespace uppaal2octopus
 				return -1;
 			}
 			
-			std::cout <<
-				"Model: " << model_file << std::endl <<
-				"Trace: " << trace_file << std::endl;
+			std::cerr
+				<< "Model: " << model_file << std::endl
+				<< "Trace: " << trace_file << std::endl;
+			
+			parser p;
+			p.parse(model_file, trace_file, [&](const octopus::event_t& e) {
+				std::cout << e << std::endl;
+			});
 			
 			return 1;
 		}

@@ -24,6 +24,9 @@
 
 #include "parser.hpp"
 
+#include <algorithm>
+#include "path_finder.hpp"
+
 namespace uppaal2octopus
 {
 	parser::invalid_format::invalid_format(const std::string& arg) : runtime_error(arg)
@@ -218,13 +221,6 @@ namespace uppaal2octopus
 		}
 	}
 
-	parser::State::~State()
-	{
-		delete[] dbm;
-		delete[] integers;
-		delete[] locations;
-	}
-	
 	parser::State::State(const uppaalmodel_t& m, FILE *file)
 	{
 		allocate(m);
@@ -262,29 +258,22 @@ namespace uppaal2octopus
 	
 		/* Allocate.
 		 */
-		locations = new int[m.processes.size()];
-		integers = new int[m.variables.size()];
-		dbm = new bound_t[m.clocks.size() * m.clocks.size()];
-
-		/* Fill with default values.
-		 */
-		std::fill(locations, locations + m.processes.size(), 0);
-		std::fill(integers, integers + m.variables.size(), 0);
-		std::fill(dbm, dbm + m.clocks.size() * m.clocks.size(), infinity_tmp);
-
+		locations = std::vector<int>(m.processes.size());
+		integers = std::vector<int>(m.variables.size());
+		dbm = std::vector<bound_t>(m.clocks.size() * m.clocks.size(), infinity_tmp);
+		
 		/* Set diagonal and lower bounds to zero.
 		 */
 		for(size_t i = 0; i < m.clocks.size(); i++)
 		{
-			getConstraint(m, 0, i) = zero_tmp;
+		//	getConstraint(m, 0, i) = zero_tmp;
 			getConstraint(m, i, i) = zero_tmp;
 		}
 	}
 	
 	parser::Transition::Transition(const uppaalmodel_t& m, FILE *file)
 	{
-		edges = new int[m.processes.size()];
-		std::fill(edges, edges + m.processes.size(), -1);
+		edges = std::vector<int>(m.processes.size(), -1);
 
 		int process, edge;
 		while(fscanf(file, "%d %d.\n", &process, &edge) == 2)
@@ -292,20 +281,45 @@ namespace uppaal2octopus
 
 		fscanf(file, ".\n");
 	}
-
-	parser::Transition::~Transition()
+	
+	size_t parser::findClock(const parser::uppaalmodel_t& m, const std::string str) const
 	{
-		delete[] edges;
+		for(size_t i = 0; i < m.clocks.size(); i++)
+			if(m.clocks[i] == str)
+				return i;
+		
+		throw std::runtime_error(std::string("There is no clock with name ") + str);
 	}
 	
-	void parser::output(const parser::State& s, const parser::callback_t& f) const
+	int parser::getClock(const parser::uppaalmodel_t& m, const parser::State& s) const
 	{
-		//
+		/*
+		 * Because a trace does not always contain "t(0)-c"-bdm's in
+		 * every state, try to find a trace of clocks that contains the
+		 * same information
+		 */
+		const size_t t0_i = findClock(m, "t(0)");
+		const size_t c_i = findClock(m, "c");
+		
+		path_finder<size_t>::edges_t edges;
+		
+		for(size_t i = 0; i < m.clocks.size(); i++) 
+			for(size_t j = 0; j < m.clocks.size(); j++) 
+				if(i != j && s.getConstraint(m, i, j).value != infinity.value)
+					edges.emplace_back(i, j);
+		
+		const auto trace = path_finder<size_t>::search(edges, t0_i, c_i);
+		
+		int result = 0;
+		for(const auto& e : trace)
+			result -= s.getConstraint(m, e.first, e.second).value;
+		
+		return result;
 	}
 	
 	void parser::loadTrace(const parser::uppaalmodel_t& m, FILE *file, const parser::callback_t& f) const
 	{
-		output(State(m, file), f);
+		State state(m, file);
 		for(;;)
 		{
 			int c;
@@ -325,10 +339,13 @@ namespace uppaal2octopus
 			std::ungetc(c, file);
 
 			// Read a state and a transition.
-			State state(m, file);
+			state = State(m, file);
 			Transition transition(m, file); //We do nothing with a transition
 			
-			output(state, f);
+			//output(state, f);
+			
+			//jobId, pageNumber, scenario, resource, eventId, startEnd, timeStamp, label
+			f({"jobId", 0, "scenario", "resource", 0, octopus::indicator_e::start, static_cast<uint32_t>(getClock(m, state)), ""});
 		}
 	}
 	

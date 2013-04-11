@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ostream>
+
 namespace uppaal2octopus
 {
 	class octopus
@@ -22,4 +24,39 @@ namespace uppaal2octopus
 			std::string label;
 		};
 	};
+}
+
+namespace std
+{
+	inline std::string to_string(uppaal2octopus::octopus::indicator_e e)
+	{
+		typedef uppaal2octopus::octopus::indicator_e type;
+	
+		switch(e)
+		{
+		case type::start:
+			return "start";
+		case type::end:
+			return "end";
+		}
+	}
+}
+
+namespace uppaal2octopus
+{
+	inline std::ostream& operator<<(std::ostream& o, const octopus::event_t& rhs)
+	{
+		const static char sep = '\t';
+		
+		o	<< rhs.jobId << sep
+			<< rhs.pageNumber << sep
+			<< rhs.scenario << sep
+			<< rhs.resource << sep
+			<< rhs.eventId << sep
+			<< std::to_string(rhs.startEnd) << sep
+			<< rhs.timeStamp << sep
+			<< rhs.label;
+		
+		return o;
+	}
 }
