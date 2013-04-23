@@ -24,8 +24,10 @@
 
 #include "parser.hpp"
 
-#include <algorithm>
 #include "path_finder.hpp"
+
+#include <algorithm>
+#include <sstream>
 
 namespace uppaal2octopus
 {
@@ -317,9 +319,38 @@ namespace uppaal2octopus
 		return result;
 	}
 	
+	void parser::output(const parser::uppaalmodel_t& m, const parser::callback_t& f, uint32_t i, uint32_t p, uint32_t l, uint32_t clock, octopus::indicator_e startEnd) const
+	{
+		if(m.layout[l].name[0] == '_')
+			return;
+	
+		std::stringstream s;
+		s << '"' << m.processes[p].name << '.' << m.layout[l].name << '"';
+	
+		f({
+			m.layout[l].name,
+			l,
+			"scenario",
+			m.processes[p].name,
+			i,
+			startEnd,
+			clock,
+			s.str()
+		});
+	}
+	
 	void parser::loadTrace(const parser::uppaalmodel_t& m, FILE *file, const parser::callback_t& f) const
 	{
+		std::vector<uint32_t> eventIds(m.processes.size(), 0);
+		std::vector<uint32_t> startClocks(m.processes.size(), 0);
+		
 		State state(m, file);
+		uint32_t clock = static_cast<uint32_t>(getClock(m, state));
+		
+		//Output all initial processes
+		//for(uint32_t p = 0; p < m.processes.size(); p++)
+		//	output(m, f, eventIds[p], p, m.processes[p].locations[state.getLocation(p)], clock, octopus::indicator_e::start);
+		
 		for(;;)
 		{
 			int c;
@@ -340,12 +371,30 @@ namespace uppaal2octopus
 
 			// Read a state and a transition.
 			state = State(m, file);
-			Transition transition(m, file); //We do nothing with a transition
+			clock = static_cast<uint32_t>(getClock(m, state));
 			
-			//output(state, f);
+			Transition transition(m, file);
+			
 			
 			//jobId, pageNumber, scenario, resource, eventId, startEnd, timeStamp, label
-			f({"jobId", 0, "scenario", "resource", 0, octopus::indicator_e::start, static_cast<uint32_t>(getClock(m, state)), ""});
+			
+			for(uint32_t p = 0; p < m.processes.size(); p++)
+			{
+				if(clock - startClocks[p] == 0)
+					continue;
+			
+				const int idx = transition.getEdge(p);
+				
+				if(idx == -1)
+					continue;
+				
+				const uint32_t edge = m.processes[p].edges[idx];
+				
+				output(m, f, eventIds[p], p, m.edges[edge].source, startClocks[p], octopus::indicator_e::start);
+				output(m, f, eventIds[p]++, p, m.edges[edge].source, clock, octopus::indicator_e::end);
+				
+				startClocks[p] = clock;
+			}
 		}
 	}
 	
