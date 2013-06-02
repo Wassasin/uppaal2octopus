@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <boost/optional.hpp>
 
 namespace uppaal2octopus
 {
@@ -319,19 +320,19 @@ namespace uppaal2octopus
 		return result;
 	}
 	
-	void parser::output(const parser::uppaalmodel_t& m, const parser::callback_t& f, uint32_t i, uint32_t p, uint32_t l, uint32_t clock, octopus::indicator_e startEnd) const
+	void parser::output(const parser::uppaalmodel_t& m, const parser::callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, octopus::indicator_e startEnd) const
 	{
 		if(m.layout[l].name[0] == '_')
 			return;
 	
 		std::stringstream s;
-		s << '"' << m.processes[p].name << '.' << m.layout[l].name << '"';
+		s << m.processes.at(p).name << '.' << m.layout.at(l).name;
 	
 		f({
-			m.layout[l].name,
-			l,
+			s.str(),
+			static_cast<uint32_t>(l), //Yet to fetch pageNum
 			"scenario",
-			m.processes[p].name,
+			m.processes.at(p).name,
 			i,
 			startEnd,
 			clock,
@@ -341,8 +342,10 @@ namespace uppaal2octopus
 	
 	void parser::loadTrace(const parser::uppaalmodel_t& m, FILE *file, const parser::callback_t& f) const
 	{
-		std::vector<uint32_t> eventIds(m.processes.size(), 0);
+		//std::vector<uint32_t> eventIds(m.processes.size(), 0);
+		uint32_t eventId = 0;
 		std::vector<uint32_t> startClocks(m.processes.size(), 0);
+		std::vector<boost::optional<int>> targets(m.processes.size(), boost::none);
 		
 		State state(m, file);
 		uint32_t clock = static_cast<uint32_t>(getClock(m, state));
@@ -374,15 +377,11 @@ namespace uppaal2octopus
 			clock = static_cast<uint32_t>(getClock(m, state));
 			
 			Transition transition(m, file);
-			
-			
+
 			//jobId, pageNumber, scenario, resource, eventId, startEnd, timeStamp, label
 			
 			for(uint32_t p = 0; p < m.processes.size(); p++)
 			{
-				if(clock - startClocks[p] == 0)
-					continue;
-			
 				const int idx = transition.getEdge(p);
 				
 				if(idx == -1)
@@ -390,11 +389,29 @@ namespace uppaal2octopus
 				
 				const uint32_t edge = m.processes[p].edges[idx];
 				
-				output(m, f, eventIds[p], p, m.edges[edge].source, startClocks[p], octopus::indicator_e::start);
-				output(m, f, eventIds[p]++, p, m.edges[edge].source, clock, octopus::indicator_e::end);
+				targets[p] = m.edges[edge].target;
+				
+				if(clock - startClocks[p] > 0)
+				{
+					output(m, f, eventId, p, m.edges[edge].source, startClocks[p], octopus::indicator_e::start);
+					output(m, f, eventId++, p, m.edges[edge].source, clock, octopus::indicator_e::end);
+				}
 				
 				startClocks[p] = clock;
 			}
+		}
+		
+		// Output all end-states
+		for(uint32_t p = 0; p < m.processes.size(); p++)
+		{
+			if(!targets[p])
+				continue;
+			
+			if(clock - startClocks[p] == 0)
+				continue;
+			
+			output(m, f, eventId, p, targets[p].get(), startClocks[p], octopus::indicator_e::start);
+			output(m, f, eventId++, p, targets[p].get(), clock, octopus::indicator_e::end);
 		}
 	}
 	

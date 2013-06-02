@@ -78,6 +78,18 @@ namespace uppaal2octopus
 				std::cout << e << std::endl;
 			});
 			
+			/*for(uint32_t i = 0; i < 1000; ++i)
+			{
+				std::stringstream s;
+				s << "test.a" << i;
+				
+				octopus::event_t start{"a", 1, "scenario", "test", i, octopus::indicator_e::start, i, s.str()};
+				octopus::event_t end{"a", 1, "scenario", "test", i, octopus::indicator_e::end, i+1, s.str()};
+				
+				std::cout << start << std::endl;
+				std::cout << end << std::endl;
+			}*/
+			
 			return 1;
 		}
 	};

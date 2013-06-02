@@ -236,7 +236,7 @@ namespace uppaal2octopus
 		size_t findClock(const uppaalmodel_t& m, const std::string str) const;
 		int getClock(const uppaalmodel_t& m, const State& s) const;
 		
-		void output(const uppaalmodel_t& m, const callback_t& f, uint32_t i, uint32_t p, uint32_t l, uint32_t clock, octopus::indicator_e startEnd) const;
+		void output(const uppaalmodel_t& m, const callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, octopus::indicator_e startEnd) const;
 		
 		// Read and output a trace file.
 		void loadTrace(const uppaalmodel_t& m, FILE *file, const callback_t& f) const;

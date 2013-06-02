@@ -55,7 +55,7 @@ namespace uppaal2octopus
 			<< rhs.eventId << sep
 			<< std::to_string(rhs.startEnd) << sep
 			<< rhs.timeStamp << sep
-			<< rhs.label;
+			<< '"' << rhs.label << '"';
 		
 		return o;
 	}
