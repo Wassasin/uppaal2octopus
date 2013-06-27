@@ -335,7 +335,7 @@ namespace uppaal2octopus
 		
 		f({
 			s.str(), // Because UPPAAL does not have the concept of Jobs, we abuse this field to contain the stateId, alongside with a textual respresentation of the state
-			0, // No such thing as a pageNum
+			static_cast<uint32_t>(l), // No such thing as a pageNum
 			"UPPAALtrace",
 			m.processes.at(p).name,
 			i,
