@@ -326,12 +326,17 @@ namespace uppaal2octopus
 			return;
 	
 		std::stringstream s;
-		s << m.processes.at(p).name << '.' << m.layout.at(l).name;
+		s << l << ":" << m.processes.at(p).name << '.' << m.layout.at(l).name;
 	
+		//if(m.layout.at(l).type != type_t::LOCATION)
+		//	throw std::runtime_error("Unexpected type");
+	
+		//std::cerr << m.expressions.at(m.layout.at(l).location.invariant) << std::endl;
+		
 		f({
-			s.str(),
-			static_cast<uint32_t>(l), //Yet to fetch pageNum
-			"scenario",
+			s.str(), // Because UPPAAL does not have the concept of Jobs, we abuse this field to contain the stateId, alongside with a textual respresentation of the state
+			0, // No such thing as a pageNum
+			"UPPAALtrace",
 			m.processes.at(p).name,
 			i,
 			startEnd,
@@ -350,9 +355,8 @@ namespace uppaal2octopus
 		State state(m, file);
 		uint32_t clock = static_cast<uint32_t>(getClock(m, state));
 		
-		//Output all initial processes
-		//for(uint32_t p = 0; p < m.processes.size(); p++)
-		//	output(m, f, eventIds[p], p, m.processes[p].locations[state.getLocation(p)], clock, octopus::indicator_e::start);
+		//for(auto pair : m.expressions)
+		//std::cerr << pair.second << std::endl;
 		
 		for(;;)
 		{
