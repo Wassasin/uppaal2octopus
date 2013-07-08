@@ -1,5 +1,5 @@
 /*
-   parser.cpp for uppaal2octopus
+   xtrparser.cpp for uppaal2octopus
    Copyright (C) 2013 Wouter Geraedts
 
    This file is copied and adapted from tracer.cpp in libutap.
@@ -22,20 +22,21 @@
    USA
 */
 
-#include "parser.hpp"
+#include "xtrparser.hpp"
 
 #include "path_finder.hpp"
 
 #include <algorithm>
 #include <sstream>
 #include <boost/optional.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace uppaal2octopus
 {
-	parser::invalid_format::invalid_format(const std::string& arg) : runtime_error(arg)
+	xtrparser::invalid_format::invalid_format(const std::string& arg) : runtime_error(arg)
 	{}
 	
-	bool parser::read(FILE *file, char *str, size_t n) const
+	bool xtrparser::read(FILE *file, char *str, size_t n) const
 	{
 		do
 		{
@@ -46,7 +47,7 @@ namespace uppaal2octopus
 		return true;
 	}
 	
-	void parser::loadIF(parser::uppaalmodel_t& m, FILE *file) const
+	void xtrparser::loadIF(xtrparser::uppaalmodel_t& m, FILE *file) const
 	{
 		char str[255];
 		char section[16];
@@ -166,6 +167,9 @@ namespace uppaal2octopus
 					if(sscanf(str, "%d:%d:%d", &index, &process, &invariant) != 3)
 						throw invalid_format("In location section");
 
+					if(m.layout[index].type != type_t::LOCATION)
+						workaround(m, index);
+
 					m.layout[index].location.process = process;
 					m.layout[index].location.invariant = invariant;
 					m.processes[process].locations.push_back(index);
@@ -181,6 +185,12 @@ namespace uppaal2octopus
 							&edge.source, &edge.target,
 							&edge.guard, &edge.sync, &edge.update) != 6)
 						throw invalid_format("In edge section");
+
+					if(m.layout[edge.source].type != type_t::LOCATION)
+						workaround(m, edge.source);
+						
+					if(m.layout[edge.target].type != type_t::LOCATION)
+						workaround(m, edge.target);
 
 					m.processes[edge.process].edges.push_back(m.edges.size());
 					m.edges.push_back(edge);
@@ -224,7 +234,7 @@ namespace uppaal2octopus
 		}
 	}
 
-	parser::State::State(const uppaalmodel_t& m, FILE *file)
+	xtrparser::State::State(const uppaalmodel_t& m, FILE *file)
 	{
 		allocate(m);
 
@@ -254,10 +264,10 @@ namespace uppaal2octopus
 		fscanf(file, ".\n");
 	}
 
-	void parser::State::allocate(const uppaalmodel_t& m)
+	void xtrparser::State::allocate(const uppaalmodel_t& m)
 	{
-		const auto infinity_tmp = parser::infinity;
-		const auto zero_tmp = parser::zero;
+		const auto infinity_tmp = xtrparser::infinity;
+		const auto zero_tmp = xtrparser::zero;
 	
 		/* Allocate.
 		 */
@@ -274,7 +284,7 @@ namespace uppaal2octopus
 		}
 	}
 	
-	parser::Transition::Transition(const uppaalmodel_t& m, FILE *file)
+	xtrparser::Transition::Transition(const uppaalmodel_t& m, FILE *file)
 	{
 		edges = std::vector<int>(m.processes.size(), -1);
 
@@ -285,7 +295,7 @@ namespace uppaal2octopus
 		fscanf(file, ".\n");
 	}
 	
-	size_t parser::findClock(const parser::uppaalmodel_t& m, const std::string str) const
+	size_t xtrparser::findClock(const xtrparser::uppaalmodel_t& m, const std::string str) const
 	{
 		for(size_t i = 0; i < m.clocks.size(); i++)
 			if(m.clocks[i] == str)
@@ -294,7 +304,7 @@ namespace uppaal2octopus
 		throw std::runtime_error(std::string("There is no clock with name ") + str);
 	}
 	
-	int parser::getClock(const parser::uppaalmodel_t& m, const parser::State& s) const
+	int xtrparser::getClock(const xtrparser::uppaalmodel_t& m, const xtrparser::State& s) const
 	{
 		/*
 		 * Because a trace does not always contain "t(0)-c"-bdm's in
@@ -320,7 +330,7 @@ namespace uppaal2octopus
 		return result;
 	}
 	
-	void parser::output(const parser::uppaalmodel_t& m, const parser::callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, octopus::indicator_e startEnd) const
+	void xtrparser::output(const xtrparser::uppaalmodel_t& m, const xtrparser::callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, octopus::indicator_e startEnd) const
 	{
 		if(m.layout[l].name[0] == '_')
 			return;
@@ -328,8 +338,13 @@ namespace uppaal2octopus
 		std::stringstream s;
 		s << l << ":" << m.processes.at(p).name << '.' << m.layout.at(l).name;
 	
-		//if(m.layout.at(l).type != type_t::LOCATION)
-		//	throw std::runtime_error("Unexpected type");
+		if(m.layout.at(l).type != type_t::LOCATION)
+		{
+			std::stringstream sstr;
+			sstr << "Unexpected type " << m.layout.at(l).type << " for cell " << l << std::endl;
+		
+			throw std::runtime_error(sstr.str());
+		}
 	
 		//std::cerr << m.expressions.at(m.layout.at(l).location.invariant) << std::endl;
 		
@@ -345,7 +360,7 @@ namespace uppaal2octopus
 		});
 	}
 	
-	void parser::loadTrace(const parser::uppaalmodel_t& m, FILE *file, const parser::callback_t& f) const
+	void xtrparser::loadTrace(const xtrparser::uppaalmodel_t& m, FILE *file, const xtrparser::callback_t& f) const
 	{
 		//std::vector<uint32_t> eventIds(m.processes.size(), 0);
 		uint32_t eventId = 0;
@@ -419,7 +434,16 @@ namespace uppaal2octopus
 		}
 	}
 	
-	void parser::parse(const std::string model, const std::string trace, const parser::callback_t& f) const
+	void xtrparser::workaround(uppaalmodel_t& m, int l) const
+	{
+		std::cerr << "Inconsistent model: unexpected type " << m.layout[l].type << " for cell " << l << " (workaround by setting to location)" << std::endl;
+		
+		m.layout[l].type = LOCATION;
+		m.layout[l].name = "restored_cell_";
+		m.layout[l].name.append(boost::lexical_cast<std::string>(index));
+	}
+	
+	void xtrparser::parse(const std::string model, const std::string trace, const xtrparser::callback_t& f) const
 	{
 		FILE *file;
 		uppaalmodel_t m;

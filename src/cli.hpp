@@ -1,7 +1,7 @@
 #pragma once
 
 #include <boost/program_options.hpp>
-#include "parser.hpp"
+#include "xtrparser.hpp"
 
 namespace uppaal2octopus
 {
@@ -73,7 +73,7 @@ namespace uppaal2octopus
 				<< "Model: " << model_file << std::endl
 				<< "Trace: " << trace_file << std::endl;
 			
-			parser p;
+			xtrparser p;
 			p.parse(model_file, trace_file, [&](const octopus::event_t& e) {
 				std::cout << e << std::endl;
 			});

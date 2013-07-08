@@ -1,5 +1,5 @@
 /*
-   parser.hpp for uppaal2octopus
+   xtrparser.hpp for uppaal2octopus
    Copyright (C) 2013 Wouter Geraedts
 
    This file is copied and adapted from tracer.cpp in libutap.
@@ -37,7 +37,7 @@
 
 #include "octopus.hpp"
 
-/* This parser takes an UPPAAL model in the UPPAAL intermediate
+/* This xtrparser takes an UPPAAL model in the UPPAAL intermediate
  * format and a UPPAAL XTR trace file and returns this as a usable object.
  *
  * Notice that the intermediate format uses a global numbering of
@@ -50,7 +50,7 @@
 
 namespace uppaal2octopus
 {
-	class parser
+	class xtrparser
 	{
 	public:
 		typedef std::function<void(const octopus::event_t&)> callback_t;
@@ -156,7 +156,7 @@ namespace uppaal2octopus
 			bool strict : 1;  // True if the bound is strict
 		};
 		
-		/* Thrown by parser upon parse errors.
+		/* Thrown by xtrparser upon parse errors.
 		 */
 		class invalid_format : public std::runtime_error
 		{
@@ -230,7 +230,7 @@ namespace uppaal2octopus
 		// Reads one line from file. Skips comments.
 		bool read(FILE *file, char *str, size_t n) const;
 
-		// Parser for intermediate format.
+		// xtrparser for intermediate format.
 		void loadIF(uppaalmodel_t& m, FILE *file) const;
 		
 		size_t findClock(const uppaalmodel_t& m, const std::string str) const;
@@ -240,6 +240,8 @@ namespace uppaal2octopus
 		
 		// Read and output a trace file.
 		void loadTrace(const uppaalmodel_t& m, FILE *file, const callback_t& f) const;
+		
+		void workaround(uppaalmodel_t& m, int l) const;
 
 	public:
 		void parse(const std::string model, const std::string trace, const callback_t& f) const;
