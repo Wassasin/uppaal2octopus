@@ -1,25 +1,20 @@
 #pragma once
 
 #include <ostream>
+#include "concepts.hpp"
 
 namespace uppaal2octopus
 {
 	class octopus
 	{
 	public:
-		enum class indicator_e
-		{
-			start,
-			end
-		};
-	
 		struct event_t
 		{
 			std::string jobId;
 			uint32_t pageNumber;
 			std::string scenario, resource;
 			uint32_t eventId;
-			indicator_e startEnd;
+			startend_e startEnd;
 			uint32_t timeStamp;
 			std::string label;
 		};
@@ -28,9 +23,9 @@ namespace uppaal2octopus
 
 namespace std
 {
-	inline std::string to_string(uppaal2octopus::octopus::indicator_e e)
+	inline std::string to_string(uppaal2octopus::startend_e e)
 	{
-		typedef uppaal2octopus::octopus::indicator_e type;
+		typedef uppaal2octopus::startend_e type;
 	
 		switch(e)
 		{

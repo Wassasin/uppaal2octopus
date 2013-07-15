@@ -330,7 +330,7 @@ namespace uppaal2octopus
 		return result;
 	}
 	
-	void xtrparser::output(const xtrparser::uppaalmodel_t& m, const xtrparser::callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, octopus::indicator_e startEnd) const
+	void xtrparser::output(const xtrparser::uppaalmodel_t& m, const xtrparser::callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, startend_e startEnd) const
 	{
 		if(m.layout[l].name[0] == '_')
 			return;
@@ -362,16 +362,12 @@ namespace uppaal2octopus
 	
 	void xtrparser::loadTrace(const xtrparser::uppaalmodel_t& m, FILE *file, const xtrparser::callback_t& f) const
 	{
-		//std::vector<uint32_t> eventIds(m.processes.size(), 0);
 		uint32_t eventId = 0;
 		std::vector<uint32_t> startClocks(m.processes.size(), 0);
 		std::vector<boost::optional<int>> targets(m.processes.size(), boost::none);
 		
 		State state(m, file);
 		uint32_t clock = static_cast<uint32_t>(getClock(m, state));
-		
-		//for(auto pair : m.expressions)
-		//std::cerr << pair.second << std::endl;
 		
 		for(;;)
 		{
@@ -412,8 +408,8 @@ namespace uppaal2octopus
 				
 				if(clock - startClocks[p] > 0)
 				{
-					output(m, f, eventId, p, m.edges[edge].source, startClocks[p], octopus::indicator_e::start);
-					output(m, f, eventId++, p, m.edges[edge].source, clock, octopus::indicator_e::end);
+					output(m, f, eventId, p, m.edges[edge].source, startClocks[p], startend_e::start);
+					output(m, f, eventId++, p, m.edges[edge].source, clock, startend_e::end);
 				}
 				
 				startClocks[p] = clock;
@@ -429,8 +425,8 @@ namespace uppaal2octopus
 			if(clock - startClocks[p] == 0)
 				continue;
 			
-			output(m, f, eventId, p, targets[p].get(), startClocks[p], octopus::indicator_e::start);
-			output(m, f, eventId++, p, targets[p].get(), clock, octopus::indicator_e::end);
+			output(m, f, eventId, p, targets[p].get(), startClocks[p], startend_e::start);
+			output(m, f, eventId++, p, targets[p].get(), clock, startend_e::end);
 		}
 	}
 	
