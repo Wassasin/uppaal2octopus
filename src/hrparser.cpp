@@ -59,23 +59,28 @@ namespace uppaal2octopus
 			consume();
 		}
 
-		bool found_clock = false;
+		bool found_lower_clock = false, found_upper_clock = false;
 		while(try_consume() && buffer != "Transitions:")
 		{
 			if(buffer.size() > 0 && buffer[buffer.size()-1] == ',')
 				buffer.pop_back(); //Remove superfluous comma
 		
-			const static boost::regex r_clock("([^-]+)([><]=)(.+)");
-			const static boost::regex r_dbm("(.+)-(.+)([><]=)(.+)");
-			const static boost::regex r_var("(.+)=(.+)");
+			const static boost::regex r_clock("^([^-]+)([><]=)(.+)$");
+			const static boost::regex r_dbm("^(.+)-(.+)([><]=)(.+)$");
+			const static boost::regex r_var("^(.+)=(.+)$");
 			
 			boost::smatch m;
 			if(boost::regex_match(buffer, m, r_clock))
 			{
-				if(m[1] == "c")
+				if(m[1] == "c" && m[2] == ">=") // Take the lower bound, has precedence
 				{
 					s.clock = boost::lexical_cast<size_t>(m[3]);
-					found_clock = true;
+					found_lower_clock = true;
+				}
+				else if(!found_lower_clock && m[1] == "c" && m[2] == "<=")
+				{
+					s.clock = boost::lexical_cast<size_t>(m[3]);
+					found_upper_clock = true;
 				}
 			}
 			else if(boost::regex_match(buffer, m, r_dbm))
@@ -86,7 +91,7 @@ namespace uppaal2octopus
 				error();
 		}
 		
-		if(!found_clock)
+		if(!found_lower_clock && !found_upper_clock)
 			throw std::runtime_error("Cannot find clock 'c' in State");
 		
 		return s;

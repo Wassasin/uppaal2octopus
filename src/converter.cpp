@@ -5,6 +5,15 @@
 
 namespace uppaal2octopus
 {
+	converter::converter(const converter::callback_t& f)
+	: f(f)
+	, last(0)
+	, next_event_id(0)
+	, next_location_id(30) //May not be < 30, ResVis dies in this case
+	, events()
+	, location_ids()
+	{}
+
 	converter::location_id_t converter::get_location_id(const location_t l)
 	{
 		const auto l_id_i = location_ids.find(l);
@@ -17,6 +26,12 @@ namespace uppaal2octopus
 	
 	void converter::output(const converter::event_t& e, clock_t end)
 	{
+		if(end - e.start == 0)
+			return;
+	
+		if(e.l.second.size() < 1 || e.l.second[0] == '_')
+			return;
+	
 		const event_id_t i = next_event_id++;
 		const location_id_t loc_id = get_location_id(e.l);
 	
@@ -60,13 +75,10 @@ namespace uppaal2octopus
 
 		const event_t e = e_i->second;
 		
-		if(clock - e.start > 0 && loc.second.size() >= 1 && loc.second[0] != '_') // Only output events with a duration
-		{
-			output(e, clock);
+		output(e, clock);
 			
-			if(clock > last)
-				last = clock;
-		}
+		if(clock > last)
+			last = clock;
 		
 		events.erase(loc.first);
 	}
@@ -74,14 +86,7 @@ namespace uppaal2octopus
 	void converter::flush()
 	{
 		for(const auto ep : events)
-		{
-			const auto e = ep.second;
-		
-			if(last - e.start == 0 || (e.l.second.size() >= 1 && e.l.second[0] == '_'))
-				continue;
-			
-			output(e, last);
-		}
+			output(ep.second, last);
 		
 		events.clear();
 	}

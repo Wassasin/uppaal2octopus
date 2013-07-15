@@ -39,15 +39,8 @@ namespace uppaal2octopus
 		void output(const event_t& e, clock_t end);
 		
 	public:
-		converter(const callback_t& f)
-		: f(f)
-		, last(0)
-		, next_event_id(0)
-		, next_location_id(100) //May not be < 100, ResVis dies in this case
-		, events()
-		, location_ids()
-		{}
-	
+		converter(const callback_t& f);
+		
 		void add(location_t loc, clock_t clock, startend_e startEnd);
 		void flush();
 	};
