@@ -74,6 +74,10 @@ namespace uppaal2octopus
 				std::cout << e << std::endl;
 			});
 			
+			auto f = [&](const location_t loc, const clock_t clock, const startend_e startEnd) {
+				c.add(loc, clock, startEnd);
+			};
+			
 			if(action == "xtr")
 			{
 				if(model_file == "" || trace_file == "")
@@ -87,9 +91,8 @@ namespace uppaal2octopus
 					<< "Trace: " << trace_file << std::endl;
 			
 				xtrparser p;
-				p.parse(model_file, trace_file, [&](const octopus::event_t& e) {
-					std::cout << e << std::endl;
-				});
+				p.parse(model_file, trace_file, f);
+				c.flush();
 			}
 			else if(action == "hr")
 			{
@@ -101,10 +104,7 @@ namespace uppaal2octopus
 				
 				std::cerr << "Trace: " << trace_file << std::endl;
 				
-				hrparser::parse(trace_file, [&](const location_t loc, const clock_t clock, const startend_e startEnd) {
-					c.add(loc, clock, startEnd);
-				});
-				
+				hrparser::parse(trace_file, f);
 				c.flush();
 			}
 			else if(action == "")

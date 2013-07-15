@@ -35,7 +35,7 @@
 #include <cstdlib>
 #include <functional>
 
-#include "octopus.hpp"
+#include "concepts.hpp"
 
 /* This xtrparser takes an UPPAAL model in the UPPAAL intermediate
  * format and a UPPAAL XTR trace file and returns this as a usable object.
@@ -53,7 +53,7 @@ namespace uppaal2octopus
 	class xtrparser
 	{
 	public:
-		typedef std::function<void(const octopus::event_t&)> callback_t;
+		typedef std::function<void(const location_t loc, const clock_t clock, const startend_e startEnd)> callback_t;
 	
 	private:
 		enum type_t { CONST, CLOCK, VAR, META, COST, LOCATION, FIXED };
@@ -235,8 +235,6 @@ namespace uppaal2octopus
 		
 		size_t findClock(const uppaalmodel_t& m, const std::string str) const;
 		int getClock(const uppaalmodel_t& m, const State& s) const;
-		
-		void output(const uppaalmodel_t& m, const callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, startend_e startEnd) const;
 		
 		// Read and output a trace file.
 		void loadTrace(const uppaalmodel_t& m, FILE *file, const callback_t& f) const;

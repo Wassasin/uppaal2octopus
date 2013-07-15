@@ -330,39 +330,8 @@ namespace uppaal2octopus
 		return result;
 	}
 	
-	void xtrparser::output(const xtrparser::uppaalmodel_t& m, const xtrparser::callback_t& f, uint32_t i, uint32_t p, int l, uint32_t clock, startend_e startEnd) const
-	{
-		if(m.layout[l].name[0] == '_')
-			return;
-	
-		std::stringstream s;
-		s << l << ":" << m.processes.at(p).name << '.' << m.layout.at(l).name;
-	
-		if(m.layout.at(l).type != type_t::LOCATION)
-		{
-			std::stringstream sstr;
-			sstr << "Unexpected type " << m.layout.at(l).type << " for cell " << l << std::endl;
-		
-			throw std::runtime_error(sstr.str());
-		}
-	
-		//std::cerr << m.expressions.at(m.layout.at(l).location.invariant) << std::endl;
-		
-		f({
-			s.str(), // Because UPPAAL does not have the concept of Jobs, we abuse this field to contain the stateId, alongside with a textual respresentation of the state
-			static_cast<uint32_t>(l), // No such thing as a pageNum
-			"UPPAALtrace",
-			m.processes.at(p).name,
-			i,
-			startEnd,
-			clock,
-			s.str()
-		});
-	}
-	
 	void xtrparser::loadTrace(const xtrparser::uppaalmodel_t& m, FILE *file, const xtrparser::callback_t& f) const
 	{
-		uint32_t eventId = 0;
 		std::vector<uint32_t> startClocks(m.processes.size(), 0);
 		std::vector<boost::optional<int>> targets(m.processes.size(), boost::none);
 		
@@ -408,8 +377,10 @@ namespace uppaal2octopus
 				
 				if(clock - startClocks[p] > 0)
 				{
-					output(m, f, eventId, p, m.edges[edge].source, startClocks[p], startend_e::start);
-					output(m, f, eventId++, p, m.edges[edge].source, clock, startend_e::end);
+					location_t loc = std::make_pair(m.processes.at(p).name, m.layout.at(m.edges[edge].source).name);
+				
+					f(loc, startClocks[p], startend_e::start);
+					f(loc, clock, startend_e::end);
 				}
 				
 				startClocks[p] = clock;
@@ -425,8 +396,10 @@ namespace uppaal2octopus
 			if(clock - startClocks[p] == 0)
 				continue;
 			
-			output(m, f, eventId, p, targets[p].get(), startClocks[p], startend_e::start);
-			output(m, f, eventId++, p, targets[p].get(), clock, startend_e::end);
+			location_t loc = std::make_pair(m.processes.at(p).name, m.layout.at(targets[p].get()).name);
+			
+			f(loc, startClocks[p], startend_e::start);
+			f(loc, clock, startend_e::end);
 		}
 	}
 	
